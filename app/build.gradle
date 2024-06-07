@@ -3,6 +3,16 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream ->
+        localProperties.load(stream)
+    }
+}
+
+def googleMapsApiKey = localProperties['GOOGLE_MAPS_API_KEY'] ?: ""
+
 android {
     namespace 'com.example.locationrecorder'
     compileSdk 34
@@ -13,8 +23,10 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Add this line to pass the API key from local.properties
+        resValue "string", "google_maps_api_key", googleMapsApiKey
     }
 
     buildTypes {
@@ -33,7 +45,6 @@ android {
 }
 
 dependencies {
-
     implementation libs.appcompat
     implementation libs.material
     implementation libs.constraintlayout
@@ -46,6 +57,4 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:21.0.1'
     implementation 'com.google.firebase:firebase-firestore:23.0.3'
     implementation 'com.google.firebase:firebase-analytics:20.0.2'
-
-
 }

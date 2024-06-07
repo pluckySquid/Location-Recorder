@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "423408857700",
+    "project_id": "location-recorder-425523",
+    "storage_bucket": "location-recorder-425523.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423408857700:android:ac11b6a3734b787ed4a571",
+        "android_client_info": {
+          "package_name": "com.example.locationrecorder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHrK702LLbx7hdBWnrLVPMIhI6AaMAurk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,9 +5,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -25,16 +25,12 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.Dash;
-import com.google.android.gms.maps.model.Dot;
-import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.snackbar.Snackbar;
@@ -49,9 +45,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import android.util.Log;
-import java.util.Arrays;
-
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -63,10 +56,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
 
-    // List to store recorded locations
     private List<RecordedLocation> recordedLocations;
     private Polyline polyline;
-    private Marker currentLocationMarker;
 
     private static final int COLOR_GREEN = Color.argb(255, 0, 255, 0);
     private static final int COLOR_ORANGE = Color.argb(255, 255, 165, 0);
@@ -95,28 +86,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // Initialize the list to store locations
         recordedLocations = new ArrayList<>();
 
         locationCallback = createLocationCallback(db);
 
-        // Check and request location permissions
         if (checkLocationPermission()) {
             startLocationUpdates();
         }
 
-        // Set up the map fragment
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
 
-        // Fetch previous locations from Firestore for the current day
         fetchPreviousLocations(db);
     }
 
     private void fetchPreviousLocations(FirebaseFirestore db) {
-        // Define the start and end of the current day
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         String currentDateStr = sdf.format(new Date());
         long startOfDay = 0;
@@ -157,7 +143,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
-
     private LocationCallback createLocationCallback(FirebaseFirestore db) {
         return new LocationCallback() {
             @Override
@@ -175,17 +160,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void processLocationUpdate(Location location, FirebaseFirestore db) {
         LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
         float speed = location.getSpeed();
-        long timestamp = location.getTime(); // Get the timestamp of the location
+        long timestamp = location.getTime();
 
         recordedLocations.add(new RecordedLocation(currentLocation, speed, location.getTime()));
 
-        // Set color based on speed
         int color = getColorForSpeed(speed);
 
-        // Update polyline color
         updatePolyline();
 
-        // Store location data in Firestore
         storeLocationInFirestore(location, speed, db);
     }
 
@@ -204,19 +186,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
+        List<LatLng> updatedPath = new ArrayList<>(polyline.getPoints());
 
-        List<LatLng> updatedPath = new ArrayList<>(polyline.getPoints()); // Copy existing points
-//        for (int i = 0; i < recordedLocations.size() - 1; i++) {
-//            RecordedLocation startLocation = recordedLocations.get(i);
-//            RecordedLocation endLocation = recordedLocations.get(i + 1);
-//
-//            int color = getColorForSpeed(startLocation.getSpeed());
-//
-//            // Add a polyline segment between the start and end locations with the original color
-//            addSegmentToPath(updatedPath, startLocation.getLatLng(), endLocation.getLatLng(), color);
-//        }
-
-        // Add new points to the updated path
         if (recordedLocations.size() >= 2) {
             RecordedLocation startLocation = recordedLocations.get(recordedLocations.size() - 2);
             RecordedLocation endLocation = recordedLocations.get(recordedLocations.size() - 1);
@@ -228,7 +199,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         polyline.setPoints(updatedPath);
     }
 
-
     private void addSegmentToPath(List<LatLng> path, LatLng start, LatLng end, int color) {
         PolylineOptions segment = new PolylineOptions()
                 .add(start, end)
@@ -238,50 +208,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         path.add(end);
     }
 
-
-
-
-
-    private int interpolateColor(float speed, float maxSpeed) {
-        float fraction = speed / maxSpeed;
-        int startColor;
-        int endColor;
-
-        if (fraction < 0.5) {
-            startColor = COLOR_GREEN;
-            endColor = COLOR_ORANGE;
-            fraction = fraction * 2;
-        } else {
-            startColor = COLOR_ORANGE;
-            endColor = COLOR_RED;
-            fraction = (fraction - 0.5f) * 2;
-        }
-
-        int startAlpha = Color.alpha(startColor);
-        int startRed = Color.red(startColor);
-        int startGreen = Color.green(startColor);
-        int startBlue = Color.blue(startColor);
-
-        int endAlpha = Color.alpha(endColor);
-        int endRed = Color.red(endColor);
-        int endGreen = Color.green(endColor);
-        int endBlue = Color.blue(endColor);
-
-        int interpolatedAlpha = (int) (startAlpha + fraction * (endAlpha - startAlpha));
-        int interpolatedRed = (int) (startRed + fraction * (endRed - startRed));
-        int interpolatedGreen = (int) (startGreen + fraction * (endGreen - startGreen));
-        int interpolatedBlue = (int) (startBlue + fraction * (endBlue - startBlue));
-
-        return Color.argb(interpolatedAlpha, interpolatedRed, interpolatedGreen, interpolatedBlue);
-    }
-
-
     private void storeLocationInFirestore(Location location, float speed, FirebaseFirestore db) {
         Map<String, Object> locationData = new HashMap<>();
         locationData.put("latitude", location.getLatitude());
         locationData.put("longitude", location.getLongitude());
         locationData.put("timestamp", new Date());
-        locationData.put("speed", speed);  // Add speed to Firestore
+        locationData.put("speed", speed);
 
         db.collection("locations")
                 .add(locationData)
@@ -331,12 +263,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startLocationUpdates() {
-        LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setInterval(5000);
-        locationRequest.setFastestInterval(2000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                    .setWaitForAccurateLocation(false)
+                    .setMinUpdateIntervalMillis(5000)
+                    .setMaxUpdateDelayMillis(15000)
+                    .build();
+
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
         }
     }
@@ -348,16 +281,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
         }
-
-        // Move the camera to a default location
-        LatLng defaultLocation = new LatLng(-34, 151);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 10));
-
-        // Draw previously recorded traces
         drawPreviousTraces();
     }
 
@@ -383,9 +311,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .color(color);
             mMap.addPolyline(polylineOptions); // Add each polyline segment separately
         }
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(recordedLocations.get(0).getLatLng(), 15));
     }
-
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -394,7 +321,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_settings) {
             return true;
@@ -407,6 +334,4 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp();
     }
-
-    // Helper class to store recorded location and speed
 }

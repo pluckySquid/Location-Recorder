@@ -32,7 +32,7 @@ The project follows a typical Android application structure:
 1. **Clone the Repository**
 
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:pluckySquid/Location-Recorder.git
 2. # Open the Project in Android Studio
 
 1. Open Android Studio.
